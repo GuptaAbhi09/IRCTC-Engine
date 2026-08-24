@@ -1,0 +1,65 @@
+version: '3.8'
+
+services:
+  # -------------------------------------------------------------
+  # 1. PostgreSQL Database Service  
+  # -------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    container_name: irctc-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: irctcpass
+      POSTGRES_DB: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # -------------------------------------------------------------
+  # 2. Redis Cache Service
+  # -------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: irctc-redis
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # -------------------------------------------------------------
+  # 3. pgAdmin (PostgreSQL Web Management GUI)
+  # -------------------------------------------------------------
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: irctc-pgadmin
+    restart: always
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@irctc.com
+      PGADMIN_DEFAULT_PASSWORD: adminpassword
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgres
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+
+# -------------------------------------------------------------
+# Persistent Volumes (Preserves data across container restarts)
+# -------------------------------------------------------------
+volumes:
+  postgres_data:
+  redis_data:
+  pgadmin_data:
