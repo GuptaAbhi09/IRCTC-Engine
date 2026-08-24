@@ -6,8 +6,10 @@ const config = require('../config');
  */
 const sendOtpHandler = async (req, res, next) => {
   try {
+    // Destructure the request body
     const { firstName, lastName, email, password } = req.body;
 
+    // Validate the request body
     if (!firstName || !lastName || !email || !password) {
       return res.status(400).json({
         success: false,
@@ -15,6 +17,7 @@ const sendOtpHandler = async (req, res, next) => {
       });
     }
 
+    // Call the auth service to send OTP - sends OTP to the user's email address and returns an OTP session ID
     const { otpSessionId } = await authService.sendOtp({
       firstName,
       lastName,
@@ -22,7 +25,7 @@ const sendOtpHandler = async (req, res, next) => {
       password,
     });
 
-    // Set httpOnly cookie for session ID
+    // Set httpOnly cookie for session ID - stores the OTP session ID in an httpOnly cookie
     res.cookie(config.otpCookieName, otpSessionId, {
       httpOnly: true,
       secure: config.env === 'production',
@@ -47,7 +50,9 @@ const sendOtpHandler = async (req, res, next) => {
  */
 const verifyOtpHandler = async (req, res, next) => {
   try {
+    // Get OTP session ID from cookie or request body
     const otpSessionId = req.cookies[config.otpCookieName] || req.body.otpSessionId;
+    // Get OTP from request body
     const { otp } = req.body;
 
     if (!otpSessionId || !otp) {
@@ -57,12 +62,13 @@ const verifyOtpHandler = async (req, res, next) => {
       });
     }
 
+    // Call the auth service to verify OTP and register user - verifies the OTP and registers the user, then returns the created user
     const user = await authService.verifyOtpAndRegister({
       otpSessionId,
       otp,
     });
 
-    // Clear session cookie after successful verification
+    // Clear session cookie after successful verification - removes the OTP session cookie after successful verification
     res.clearCookie(config.otpCookieName);
 
     return res.status(201).json({

@@ -20,11 +20,13 @@ const transporter = nodemailer.createTransport({
  */
 const sendEmail = async (to, subject, html) => {
   try {
+    // for development only
     if (config.env === 'development' && (!config.smtp.user || config.smtp.user === 'your_email@gmail.com')) {
       logger.info(`[DEV MODE] Email to: ${to} | Subject: ${subject}`);
       return true;
     }
 
+    // production mode: send actual email
     await transporter.sendMail({
       from: config.smtp.from,
       to,

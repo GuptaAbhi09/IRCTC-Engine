@@ -39,7 +39,9 @@ const sendOtp = async ({ firstName, lastName, email, password }) => {
   const otpSessionId = crypto.randomUUID();
 
   // 4. Store session payload in Redis with 10-minute TTL
+  // Create a unique Redis key using the session UUID
   const sessionKey = `otp_session:${otpSessionId}`;
+  // Serialize user registration data into a JSON string because Redis stores strings
   const sessionData = JSON.stringify({
     firstName,
     lastName,
@@ -48,6 +50,8 @@ const sendOtp = async ({ firstName, lastName, email, password }) => {
     hashedOtp,
   });
 
+  // Save session data in Redis with automatic expiration (TTL = 10 mins / 600s)
+  // 'EX' tells Redis to set expiration in seconds
   await redis.set(sessionKey, sessionData, 'EX', config.otpExpirySeconds);
 
   // 5. Set rate limit key with 60-second TTL
@@ -71,7 +75,9 @@ const verifyOtpAndRegister = async ({ otpSessionId, otp }) => {
   }
 
   // 1. Retrieve OTP session from Redis
+  // Reconstruct the exact Redis key using the incoming otpSessionId
   const sessionKey = `otp_session:${otpSessionId}`;
+  // Fetch stored JSON string from Redis
   const rawSessionData = await redis.get(sessionKey);
 
   if (!rawSessionData) {
@@ -79,7 +85,7 @@ const verifyOtpAndRegister = async ({ otpSessionId, otp }) => {
     error.statusCode = 400;
     throw error;
   }
-
+  // Convert JSON string back into a JavaScript object
   const { firstName, lastName, email, hashedPassword, hashedOtp } = JSON.parse(rawSessionData);
 
   // 2. Verify incoming OTP hash matches stored OTP hash
