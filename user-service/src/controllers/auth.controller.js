@@ -1,15 +1,14 @@
 const authService = require('../services/auth.service');
 const config = require('../config');
+const { getDeviceId } = require('../utils/device.util');
 
 /**
  * Controller to handle POST /send-otp
  */
 const sendOtpHandler = async (req, res, next) => {
   try {
-    // Destructure the request body
     const { firstName, lastName, email, password } = req.body;
 
-    // Validate the request body
     if (!firstName || !lastName || !email || !password) {
       return res.status(400).json({
         success: false,
@@ -17,7 +16,6 @@ const sendOtpHandler = async (req, res, next) => {
       });
     }
 
-    // Call the auth service to send OTP - sends OTP to the user's email address and returns an OTP session ID
     const { otpSessionId } = await authService.sendOtp({
       firstName,
       lastName,
@@ -25,7 +23,6 @@ const sendOtpHandler = async (req, res, next) => {
       password,
     });
 
-    // Set httpOnly cookie for session ID - stores the OTP session ID in an httpOnly cookie
     res.cookie(config.otpCookieName, otpSessionId, {
       httpOnly: true,
       secure: config.env === 'production',
@@ -37,7 +34,7 @@ const sendOtpHandler = async (req, res, next) => {
       success: true,
       message: 'OTP sent to your email address successfully',
       data: {
-        otpSessionId, // Also returned in body for non-cookie clients like mobile apps
+        otpSessionId,
       },
     });
   } catch (error) {
@@ -50,9 +47,7 @@ const sendOtpHandler = async (req, res, next) => {
  */
 const verifyOtpHandler = async (req, res, next) => {
   try {
-    // Get OTP session ID from cookie or request body
     const otpSessionId = req.cookies[config.otpCookieName] || req.body.otpSessionId;
-    // Get OTP from request body
     const { otp } = req.body;
 
     if (!otpSessionId || !otp) {
@@ -62,13 +57,11 @@ const verifyOtpHandler = async (req, res, next) => {
       });
     }
 
-    // Call the auth service to verify OTP and register user - verifies the OTP and registers the user, then returns the created user
     const user = await authService.verifyOtpAndRegister({
       otpSessionId,
       otp,
     });
 
-    // Clear session cookie after successful verification - removes the OTP session cookie after successful verification
     res.clearCookie(config.otpCookieName);
 
     return res.status(201).json({
@@ -81,7 +74,108 @@ const verifyOtpHandler = async (req, res, next) => {
   }
 };
 
+/**
+ * Controller to handle POST /login
+ */
+const loginHandler = async (req, res, next) => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email and password are required',
+      });
+    }
+    // Get device ID from request
+    const deviceId = getDeviceId(req);   
+    // Call login service
+    const { user, accessToken, refreshToken } = await authService.login({
+      email,
+      password,
+      deviceId,
+    });
+
+    // Set httpOnly cookies for Access Token & Refresh Token
+    res.cookie(config.jwt.accessTokenCookieName, accessToken, {
+      httpOnly: true,
+      secure: config.env === 'production',
+      sameSite: 'lax',
+      maxAge: config.jwt.accessExpirySeconds * 1000,
+    });
+
+    res.cookie(config.jwt.refreshTokenCookieName, refreshToken, {
+      httpOnly: true,
+      secure: config.env === 'production',
+      sameSite: 'lax',
+      maxAge: config.jwt.refreshExpirySeconds * 1000,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: 'Logged in successfully',
+      data: {
+        user,
+        accessToken,
+        refreshToken,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Controller to handle POST /refresh
+ */
+const refreshHandler = async (req, res, next) => {
+  try {
+    const refreshToken = req.cookies[config.jwt.refreshTokenCookieName] || req.body.refreshToken;
+
+    if (!refreshToken) {
+      return res.status(401).json({
+        success: false,
+        message: 'Refresh token cookie or body param is required',
+      });
+    }
+
+    const deviceId = getDeviceId(req);
+    const { accessToken, refreshToken: newRefreshToken } = await authService.rotateRefreshToken({
+      refreshToken,
+      deviceId,
+    });
+
+    // Overwrite cookies with rotated tokens
+    res.cookie(config.jwt.accessTokenCookieName, accessToken, {
+      httpOnly: true,
+      secure: config.env === 'production',
+      sameSite: 'lax',
+      maxAge: config.jwt.accessExpirySeconds * 1000,
+    });
+
+    res.cookie(config.jwt.refreshTokenCookieName, newRefreshToken, {
+      httpOnly: true,
+      secure: config.env === 'production',
+      sameSite: 'lax',
+      maxAge: config.jwt.refreshExpirySeconds * 1000,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: 'Tokens rotated successfully',
+      data: {
+        accessToken,
+        refreshToken: newRefreshToken,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   sendOtpHandler,
   verifyOtpHandler,
+  loginHandler,
+  refreshHandler,
 };

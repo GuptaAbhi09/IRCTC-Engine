@@ -3,7 +3,8 @@ const prisma = require('../config/prisma');
 const redis = require('../config/redis');
 const config = require('../config');
 const { generateOtp } = require('../utils/otp.util');
-const { hashOtp, hashPassword } = require('../utils/crypto.util');
+const { hashOtp, hashPassword, comparePassword } = require('../utils/crypto.util');
+const { generateAccessToken, generateRefreshToken, verifyRefreshToken } = require('../utils/token.util');
 const { sendEmail } = require('./mail.service');
 const { getOtpEmailTemplate } = require('../templates/otp-email.template');
 
@@ -39,9 +40,7 @@ const sendOtp = async ({ firstName, lastName, email, password }) => {
   const otpSessionId = crypto.randomUUID();
 
   // 4. Store session payload in Redis with 10-minute TTL
-  // Create a unique Redis key using the session UUID
   const sessionKey = `otp_session:${otpSessionId}`;
-  // Serialize user registration data into a JSON string because Redis stores strings
   const sessionData = JSON.stringify({
     firstName,
     lastName,
@@ -50,8 +49,6 @@ const sendOtp = async ({ firstName, lastName, email, password }) => {
     hashedOtp,
   });
 
-  // Save session data in Redis with automatic expiration (TTL = 10 mins / 600s)
-  // 'EX' tells Redis to set expiration in seconds
   await redis.set(sessionKey, sessionData, 'EX', config.otpExpirySeconds);
 
   // 5. Set rate limit key with 60-second TTL
@@ -75,9 +72,7 @@ const verifyOtpAndRegister = async ({ otpSessionId, otp }) => {
   }
 
   // 1. Retrieve OTP session from Redis
-  // Reconstruct the exact Redis key using the incoming otpSessionId
   const sessionKey = `otp_session:${otpSessionId}`;
-  // Fetch stored JSON string from Redis
   const rawSessionData = await redis.get(sessionKey);
 
   if (!rawSessionData) {
@@ -85,7 +80,7 @@ const verifyOtpAndRegister = async ({ otpSessionId, otp }) => {
     error.statusCode = 400;
     throw error;
   }
-  // Convert JSON string back into a JavaScript object
+
   const { firstName, lastName, email, hashedPassword, hashedOtp } = JSON.parse(rawSessionData);
 
   // 2. Verify incoming OTP hash matches stored OTP hash
@@ -121,7 +116,129 @@ const verifyOtpAndRegister = async ({ otpSessionId, otp }) => {
   return user;
 };
 
+/**
+ * Handles user authentication & token generation for a device
+ */
+const login = async ({ email, password, deviceId }) => {
+  // 1. Find user in Postgres
+  const user = await prisma.user.findUnique({
+    where: { email },
+  });
+
+  if (!user) {
+    const error = new Error('Invalid email or password');
+    error.statusCode = 401;
+    throw error;
+  }
+
+  // 2. Compare password hash
+  const isPasswordValid = await comparePassword(password, user.password);
+  if (!isPasswordValid) {
+    const error = new Error('Invalid email or password');
+    error.statusCode = 401;
+    throw error;
+  }
+
+  // 3. Check if email is verified
+  if (!user.emailVerifiedAt) {
+    const error = new Error('Please verify your email address before logging in');
+    error.statusCode = 403;
+    throw error;
+  }
+
+  // 4. Generate Access and Refresh Tokens
+  const jti = crypto.randomUUID();
+  const tokenPayload = { userId: user.id, email: user.email };
+
+  const accessToken = generateAccessToken(tokenPayload);
+  const refreshToken = generateRefreshToken(tokenPayload, jti);
+
+  // 5. Hash refresh token and store session in Redis under key `refresh_token:<userId>:<deviceId>`
+  const redisKey = `refresh_token:${user.id}:${deviceId}`;
+  const tokenHash = hashOtp(refreshToken);
+
+  const sessionPayload = JSON.stringify({ jti, tokenHash });
+  await redis.set(redisKey, sessionPayload, 'EX', config.jwt.refreshExpirySeconds);
+
+  return {
+    user: {
+      id: user.id,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      email: user.email,
+    },
+    accessToken,
+    refreshToken,
+  };
+};
+
+/**
+ * Rotates Refresh Token & Access Token while checking for reuse security breach
+ */
+const rotateRefreshToken = async ({ refreshToken, deviceId }) => {
+  if (!refreshToken) {
+    const error = new Error('Refresh token is required');
+    error.statusCode = 401;
+    throw error;
+  }
+
+  let decoded;
+  try {
+    decoded = verifyRefreshToken(refreshToken);
+  } catch (err) {
+    const error = new Error('Invalid or expired refresh token');
+    error.statusCode = 401;
+    throw error;
+  }
+
+  const { userId, jti } = decoded;
+  const redisKey = `refresh_token:${userId}:${deviceId}`;
+  const rawSessionData = await redis.get(redisKey);
+
+  // Reuse Detection & Security Safeguard
+  if (!rawSessionData) {
+    const error = new Error('Session expired or invalid. Please log in again.');
+    error.statusCode = 401;
+    throw error;
+  }
+
+  const storedSession = JSON.parse(rawSessionData);
+  const incomingTokenHash = hashOtp(refreshToken);
+
+  // If jti or tokenHash doesn't match, token reuse attack detected!
+  if (storedSession.jti !== jti || storedSession.tokenHash !== incomingTokenHash) {
+    // Revoke all active sessions for this user across all devices!
+    const keys = await redis.keys(`refresh_token:${userId}:*`);
+    if (keys.length > 0) {
+      await redis.del(keys);
+    }
+
+    const error = new Error('Security Alert: Refresh token reuse detected. All active sessions have been revoked.');
+    error.statusCode = 401;
+    throw error;
+  }
+
+  // Generate new token pair and rotate jti
+  const newJti = crypto.randomUUID();
+  const tokenPayload = { userId: decoded.userId, email: decoded.email };
+
+  const newAccessToken = generateAccessToken(tokenPayload);
+  const newRefreshToken = generateRefreshToken(tokenPayload, newJti);
+
+  // Update Redis with new jti and new token hash
+  const newTokenHash = hashOtp(newRefreshToken);
+  const newSessionPayload = JSON.stringify({ jti: newJti, tokenHash: newTokenHash });
+  await redis.set(redisKey, newSessionPayload, 'EX', config.jwt.refreshExpirySeconds);
+
+  return {
+    accessToken: newAccessToken,
+    refreshToken: newRefreshToken,
+  };
+};
+
 module.exports = {
   sendOtp,
   verifyOtpAndRegister,
+  login,
+  rotateRefreshToken,
 };

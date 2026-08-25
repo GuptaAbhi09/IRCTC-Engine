@@ -8,7 +8,16 @@ const config = {
     : ['*'],
   databaseUrl: process.env.DATABASE_URL,
   redisUrl: process.env.REDIS_URL || 'redis://localhost:6379',
-  jwtSecret: process.env.JWT_SECRET || 'default_secret',
+  
+  // JWT Settings
+  jwt: {
+    accessSecret: process.env.JWT_ACCESS_SECRET || 'default_access_secret',
+    refreshSecret: process.env.JWT_REFRESH_SECRET || 'default_refresh_secret',
+    accessExpirySeconds: parseInt(process.env.JWT_ACCESS_EXPIRY_SECONDS, 10) || 900, // 15 mins
+    refreshExpirySeconds: parseInt(process.env.JWT_REFRESH_EXPIRY_SECONDS, 10) || 604800, // 7 days
+    accessTokenCookieName: 'access_token',
+    refreshTokenCookieName: 'refresh_token',
+  },
   
   // OTP Settings
   otpExpirySeconds: parseInt(process.env.OTP_EXPIRY_SECONDS, 10) || 600,
