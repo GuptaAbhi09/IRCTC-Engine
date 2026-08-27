@@ -8,6 +8,7 @@ const errorHandler = require('./middlewares/error.middleware');
 const reqLogger = require('./middlewares/req.middleware');
 
 const authRoutes = require('./routes/auth.routes');
+const userRoutes = require('./routes/user.routes');
 
 const app = express();
 
@@ -26,6 +27,7 @@ app.get('/health', (req, res) => {
 
 // API Routes
 app.use('/api/v1/auth', authRoutes);
+app.use('/api/v1/users', userRoutes);
 
 // Error Handling Middleware (must be registered at the end)
 app.use(errorHandler);
