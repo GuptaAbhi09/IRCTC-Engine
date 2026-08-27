@@ -18,6 +18,9 @@ const config = {
     accessTokenCookieName: 'access_token',
     refreshTokenCookieName: 'refresh_token',
   },
+
+  // Google OAuth Settings
+  googleClientId: process.env.GOOGLE_CLIENT_ID || '',
   
   // OTP Settings
   otpExpirySeconds: parseInt(process.env.OTP_EXPIRY_SECONDS, 10) || 600,

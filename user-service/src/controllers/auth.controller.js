@@ -87,16 +87,14 @@ const loginHandler = async (req, res, next) => {
         message: 'Email and password are required',
       });
     }
-    // Get device ID from request
+
     const deviceId = getDeviceId(req);   
-    // Call login service
     const { user, accessToken, refreshToken } = await authService.login({
       email,
       password,
       deviceId,
     });
 
-    // Set httpOnly cookies for Access Token & Refresh Token
     res.cookie(config.jwt.accessTokenCookieName, accessToken, {
       httpOnly: true,
       secure: config.env === 'production',
@@ -114,6 +112,54 @@ const loginHandler = async (req, res, next) => {
     return res.status(200).json({
       success: true,
       message: 'Logged in successfully',
+      data: {
+        user,
+        accessToken,
+        refreshToken,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Controller to handle POST /google
+ */
+const googleLoginHandler = async (req, res, next) => {
+  try {
+    const { idToken } = req.body;
+
+    if (!idToken) {
+      return res.status(400).json({
+        success: false,
+        message: 'Google idToken is required',
+      });
+    }
+
+    const deviceId = getDeviceId(req);
+    const { user, accessToken, refreshToken } = await authService.googleLogin({
+      idToken,
+      deviceId,
+    });
+
+    res.cookie(config.jwt.accessTokenCookieName, accessToken, {
+      httpOnly: true,
+      secure: config.env === 'production',
+      sameSite: 'lax',
+      maxAge: config.jwt.accessExpirySeconds * 1000,
+    });
+
+    res.cookie(config.jwt.refreshTokenCookieName, refreshToken, {
+      httpOnly: true,
+      secure: config.env === 'production',
+      sameSite: 'lax',
+      maxAge: config.jwt.refreshExpirySeconds * 1000,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: 'Authenticated with Google successfully',
       data: {
         user,
         accessToken,
@@ -145,7 +191,6 @@ const refreshHandler = async (req, res, next) => {
       deviceId,
     });
 
-    // Overwrite cookies with rotated tokens
     res.cookie(config.jwt.accessTokenCookieName, accessToken, {
       httpOnly: true,
       secure: config.env === 'production',
@@ -177,5 +222,6 @@ module.exports = {
   sendOtpHandler,
   verifyOtpHandler,
   loginHandler,
+  googleLoginHandler,
   refreshHandler,
 };

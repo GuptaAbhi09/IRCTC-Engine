@@ -3,6 +3,7 @@ const {
   sendOtpHandler,
   verifyOtpHandler,
   loginHandler,
+  googleLoginHandler,
   refreshHandler,
 } = require('../controllers/auth.controller');
 
@@ -17,7 +18,10 @@ router.post('/verify', verifyOtpHandler);
 // Route 3: User Login
 router.post('/login', loginHandler);
 
-// Route 4: Refresh Token Rotation
+// Route 4: Google OAuth Login
+router.post('/google', googleLoginHandler);
+
+// Route 5: Refresh Token Rotation
 router.post('/refresh', refreshHandler);
 
 module.exports = router;
