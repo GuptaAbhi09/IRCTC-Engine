@@ -5,12 +5,11 @@ const config = require('../config');
 const { generateOtp } = require('../utils/otp.util');
 const { hashOtp, hashPassword, comparePassword } = require('../utils/crypto.util');
 const { generateAccessToken, generateRefreshToken, verifyRefreshToken } = require('../utils/token.util');
-const { sendEmail } = require('./mail.service');
-const { getOtpEmailTemplate } = require('../templates/otp-email.template');
 const { verifyGoogleIdToken } = require('./google.service');
+const { publishOtpEvent, publishWelcomeEvent } = require('../producers/auth.producer');
 
 /**
- * Initiates signup flow by validating email, checking rate limits, and sending OTP
+ * Initiates signup flow by validating email, checking rate limits, and publishing OTP event to Kafka
  */
 const sendOtp = async ({ firstName, lastName, email, password }) => {
   const existingUser = await prisma.user.findUnique({
@@ -49,14 +48,18 @@ const sendOtp = async ({ firstName, lastName, email, password }) => {
   await redis.set(sessionKey, sessionData, 'EX', config.otpExpirySeconds);
   await redis.set(rateLimitKey, '1', 'EX', config.otpRateLimitExpirySeconds);
 
-  const emailHtml = getOtpEmailTemplate(firstName, plainOtp);
-  await sendEmail(email, 'Verify your IRCTC Account - OTP', emailHtml);
+  // Publish event asynchronously to Kafka topic `notification.email.otp`
+  await publishOtpEvent({
+    email,
+    firstName,
+    otp: plainOtp,
+  });
 
   return { otpSessionId };
 };
 
 /**
- * Verifies OTP and completes user registration in Postgres
+ * Verifies OTP, completes user registration in Postgres, and publishes Welcome event to Kafka
  */
 const verifyOtpAndRegister = async ({ otpSessionId, otp }) => {
   if (!otpSessionId || !otp) {
@@ -104,6 +107,12 @@ const verifyOtpAndRegister = async ({ otpSessionId, otp }) => {
   });
 
   await redis.del(sessionKey);
+
+  // Publish event asynchronously to Kafka topic `notification.email.welcome`
+  await publishWelcomeEvent({
+    email: user.email,
+    firstName: user.firstName,
+  });
 
   return user;
 };
@@ -177,8 +186,9 @@ const googleLogin = async ({ idToken, deviceId }) => {
     where: { email },
   });
 
+  const isNewUser = !user;
+
   if (!user) {
-    // Create new Google user
     user = await prisma.user.create({
       data: {
         firstName,
@@ -190,13 +200,20 @@ const googleLogin = async ({ idToken, deviceId }) => {
       },
     });
   } else if (user.authProvider !== 'GOOGLE' || !user.emailVerifiedAt) {
-    // Link Google or update verified status
     user = await prisma.user.update({
       where: { id: user.id },
       data: {
         authProvider: 'GOOGLE',
         emailVerifiedAt: user.emailVerifiedAt || new Date(),
       },
+    });
+  }
+
+  // Publish welcome event for new Google users
+  if (isNewUser) {
+    await publishWelcomeEvent({
+      email: user.email,
+      firstName: user.firstName,
     });
   }
 
