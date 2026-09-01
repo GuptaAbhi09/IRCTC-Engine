@@ -7,6 +7,7 @@ const corsMiddleware = require('./middlewares/cors.middleware');
 const errorHandler = require('./middlewares/error.middleware');
 const reqLogger = require('./middlewares/req.middleware');
 
+const { connectProducer } = require('./config/kafka');
 const authRoutes = require('./routes/auth.routes');
 const userRoutes = require('./routes/user.routes');
 
@@ -32,7 +33,12 @@ app.use('/api/v1/users', userRoutes);
 // Error Handling Middleware (must be registered at the end)
 app.use(errorHandler);
 
-// Start Server
-app.listen(config.port, () => {
+// Start Server & Connect Kafka Producer
+app.listen(config.port, async () => {
   logger.info(`User service is running on port ${config.port}`);
+  try {
+    await connectProducer();
+  } catch (err) {
+    logger.error(`Kafka producer initialization warning: ${err.message}`);
+  }
 });

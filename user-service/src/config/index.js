@@ -9,6 +9,12 @@ const config = {
   databaseUrl: process.env.DATABASE_URL,
   redisUrl: process.env.REDIS_URL || 'redis://localhost:6379',
   
+  // Kafka Settings
+  kafka: {
+    clientId: process.env.KAFKA_CLIENT_ID || 'user-service-producer',
+    brokers: process.env.KAFKA_BROKERS ? process.env.KAFKA_BROKERS.split(',') : ['localhost:9092'],
+  },
+
   // JWT Settings
   jwt: {
     accessSecret: process.env.JWT_ACCESS_SECRET || 'default_access_secret',
