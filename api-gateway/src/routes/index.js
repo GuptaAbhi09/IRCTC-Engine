@@ -1,6 +1,7 @@
 const express = require('express');
 const config = require('../config');
 const createProxy = require('../services/proxy');
+const { authenticateUser } = require('../middlewares/auth.middleware');
 
 const router = express.Router();
 
@@ -13,16 +14,18 @@ router.get('/health', (req, res) => {
   });
 });
 
-// 2. User Service - Auth Routes Proxy (/api/v1/auth/*)
+// 2. User Service - Public Auth Routes Proxy (/api/v1/auth/*)
 router.use(
   '/api/v1/auth',
   createProxy(config.services.userServiceUrl)
 );
 
-// 3. User Service - User Profile Routes Proxy (/api/v1/users/*)
+// 3. User Service - Private User Profile Routes Proxy (/api/v1/users/*)
 router.use(
   '/api/v1/users',
+  authenticateUser,
   createProxy(config.services.userServiceUrl)
 );
 
 module.exports = router;
+

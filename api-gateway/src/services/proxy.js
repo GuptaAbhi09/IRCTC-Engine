@@ -16,10 +16,17 @@ const createProxy = (targetUrl, options = {}) => {
       return targetPath;
     },
 
-    // 2. Request Decorator (Allows injecting custom headers in future phases)
+    // 2. Request Decorator (Injects client identity headers to downstream microservices)
     proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
-      // Retain or attach client IP and device headers
+      // Retain or attach client IP
       proxyReqOpts.headers['x-forwarded-for'] = srcReq.ip;
+
+      // Inject verified user context if present (set by Gateway auth middleware)
+      if (srcReq.user) {
+        proxyReqOpts.headers['x-user-id'] = srcReq.user.userId;
+        proxyReqOpts.headers['x-user-email'] = srcReq.user.email;
+      }
+
       return proxyReqOpts;
     },
 

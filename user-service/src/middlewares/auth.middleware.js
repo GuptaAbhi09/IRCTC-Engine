@@ -1,40 +1,22 @@
-const config = require('../config');
-const { verifyAccessToken } = require('../utils/token.util');
-
 /**
- * Authentication Middleware: Verifies Access Token from Cookie or Bearer Header
+ * Microservice Authentication Middleware: Reads verified user identity 
+ * injected into HTTP headers by the API Gateway (x-user-id, x-user-email)
  */
 const authenticateUser = async (req, res, next) => {
   try {
-    // 1. Check httpOnly cookie or Authorization Bearer header
-    let token = req.cookies[config.jwt.accessTokenCookieName];
+    const userId = req.headers['x-user-id'];
+    const email = req.headers['x-user-email'];
 
-    if (!token && req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
-      token = req.headers.authorization.split(' ')[1];
-    }
-
-    if (!token) {
+    if (!userId) {
       return res.status(401).json({
         success: false,
-        message: 'Authentication required. Please provide a valid access token.',
+        message: 'Unauthorized access. Request must be routed through API Gateway.',
       });
     }
 
-    // 2. Verify Access Token signature and expiration
-    let decoded;
-    try {
-      decoded = verifyAccessToken(token);
-    } catch (err) {
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid or expired access token. Please refresh your token.',
-      });
-    }
-
-    // 3. Attach user payload to request context
     req.user = {
-      userId: decoded.userId,
-      email: decoded.email,
+      userId,
+      email,
     };
 
     next();
@@ -46,3 +28,4 @@ const authenticateUser = async (req, res, next) => {
 module.exports = {
   authenticateUser,
 };
+
