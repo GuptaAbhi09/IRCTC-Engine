@@ -14,7 +14,7 @@ const TOPICS = [
 const startEmailConsumer = async () => {
   try {
     // Subscribe to topics
-    await consumer.subscribe({ topics: TOPICS, fromBeginning: false });
+    await consumer.subscribe({ topics: TOPICS, fromBeginning: true });
     logger.info(`Subscribed to Kafka topics: ${TOPICS.join(', ')}`);
 
     // Process incoming message stream
