@@ -1,0 +1,161 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// -------------------------------------------------------------
+// 1. Station Model
+// -------------------------------------------------------------
+model Station {
+  id                  String         @id @default(uuid())
+  name                String
+  code                String         @unique
+  city                String
+  state               String
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+
+  sourceRoutes        Route[]        @relation("SourceStation")
+  destinationRoutes   Route[]        @relation("DestinationStation")
+  routeStations       RouteStation[]
+
+  @@map("stations")
+}
+
+// -------------------------------------------------------------
+// 2. Route Model
+// -------------------------------------------------------------
+model Route {
+  id                   String         @id @default(uuid())
+  name                 String
+  sourceStationId      String
+  destinationStationId String
+  createdAt            DateTime       @default(now())
+  updatedAt            DateTime       @updatedAt
+
+  sourceStation        Station        @relation("SourceStation", fields: [sourceStationId], references: [id])
+  destinationStation   Station        @relation("DestinationStation", fields: [destinationStationId], references: [id])
+  routeStations        RouteStation[]
+  trains               Train[]
+
+  @@map("routes")
+}
+
+// -------------------------------------------------------------
+// 3. RouteStation Model (Sequence & Intermediate Timings)
+// -------------------------------------------------------------
+model RouteStation {
+  id                   String   @id @default(uuid())
+  routeId              String
+  stationId            String
+  sequenceNum          Int
+  arrivalTime          String?
+  departureTime        String?
+  distanceFromOriginKm Float    @default(0.0)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  route                Route    @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  station              Station  @relation(fields: [stationId], references: [id], onDelete: Cascade)
+
+  @@unique([routeId, stationId])
+  @@unique([routeId, sequenceNum])
+  @@map("route_stations")
+}
+
+// -------------------------------------------------------------
+// 4. Enums: SeatType & ScheduleStatus
+// -------------------------------------------------------------
+enum SeatType {
+  LOWER
+  MIDDLE
+  UPPER
+  SIDE_LOWER
+  SIDE_UPPER
+}
+
+enum ScheduleStatus {
+  ACTIVE
+  CANCELLED
+  DELAYED
+}
+
+// -------------------------------------------------------------
+// 5. Train Model
+// -------------------------------------------------------------
+model Train {
+  id           String     @id @default(uuid())
+  number       String     @unique
+  name         String
+  routeId      String
+  totalCoaches Int        @default(1)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  route        Route      @relation(fields: [routeId], references: [id])
+  coaches      Coach[]
+  seats        Seat[]
+  schedules    Schedule[]
+
+  @@map("trains")
+}
+
+// -------------------------------------------------------------
+// 6. Coach Model
+// -------------------------------------------------------------
+model Coach {
+  id         String   @id @default(uuid())
+  trainId    String
+  name       String   @default("B1") // e.g. B1, B2, A1
+  coachType  String   @default("3AC") // e.g. 3AC, 2AC, SL
+  totalSeats Int      @default(72)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  train      Train    @relation(fields: [trainId], references: [id], onDelete: Cascade)
+  seats      Seat[]
+
+  @@unique([trainId, name])
+  @@map("coaches")
+}
+
+// -------------------------------------------------------------
+// 7. Seat Model
+// -------------------------------------------------------------
+model Seat {
+  id         String   @id @default(uuid())
+  trainId    String
+  coachId    String
+  seatNumber String   // e.g. B1-12
+  seatType   SeatType
+  price      Float
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  train      Train    @relation(fields: [trainId], references: [id], onDelete: Cascade)
+  coach      Coach    @relation(fields: [coachId], references: [id], onDelete: Cascade)
+
+  @@unique([trainId, seatNumber])
+  @@map("seats")
+}
+
+// -------------------------------------------------------------
+// 8. Schedule Model
+// -------------------------------------------------------------
+model Schedule {
+  id            String         @id @default(uuid())
+  trainId       String
+  departureDate DateTime
+  status        ScheduleStatus @default(ACTIVE)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  train         Train          @relation(fields: [trainId], references: [id], onDelete: Cascade)
+
+  @@unique([trainId, departureDate])
+  @@map("schedules")
+}
