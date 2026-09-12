@@ -1,4 +1,5 @@
 const prisma = require('../config/prisma');
+const { publishStationCreatedEvent } = require('../producers/admin.producer');
 
 /**
  * Creates a new railway station
@@ -24,6 +25,9 @@ const createStation = async ({ name, code, city, state }) => {
       state: state.trim(),
     },
   });
+
+  // Publish Kafka Event
+  await publishStationCreatedEvent(station);
 
   return station;
 };

@@ -17,6 +17,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use(reqLogger);
 
+const { connectProducer } = require('./config/kafka');
 const adminRoutes = require('./routes');
 
 // Health Check Route
@@ -30,7 +31,12 @@ app.use('/api/v1/admin', adminRoutes);
 // Centralized Error Handler
 app.use(errorHandler);
 
-// Start Admin Service Server
-app.listen(config.port, () => {
+// Start Admin Service Server & Connect Kafka Producer
+app.listen(config.port, async () => {
   logger.info(`[ADMIN-SERVICE] Server running on port ${config.port} in ${config.env} mode`);
+  try {
+    await connectProducer();
+  } catch (err) {
+    logger.error(`[ADMIN-SERVICE] Kafka producer initialization warning: ${err.message}`);
+  }
 });

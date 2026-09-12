@@ -1,4 +1,5 @@
 const prisma = require('../config/prisma');
+const { publishScheduleCreatedEvent } = require('../producers/admin.producer');
 
 /**
  * Creates a schedule (trip departure date) for a specific train
@@ -43,6 +44,9 @@ const createSchedule = async ({ trainId, departureDate }) => {
       train: true,
     },
   });
+
+  // Publish Kafka Event
+  await publishScheduleCreatedEvent(schedule);
 
   return schedule;
 };

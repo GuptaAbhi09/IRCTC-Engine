@@ -1,4 +1,5 @@
 const prisma = require('../config/prisma');
+const { publishTrainCreatedEvent } = require('../producers/admin.producer');
 
 /**
  * Helper to determine Indian Railways Seat Type based on seat number sequence (8-berth modulo pattern)
@@ -102,6 +103,9 @@ const createTrain = async ({ number, name, routeId, coaches }) => {
       },
     });
   });
+
+  // Publish Kafka Event
+  await publishTrainCreatedEvent(createdTrain);
 
   return createdTrain;
 };
