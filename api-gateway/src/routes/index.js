@@ -32,6 +32,14 @@ router.use(
   createProxy(config.services.userServiceUrl)
 );
 
+// 4. Admin Service - Private Admin Routes Proxy (/api/v1/admin/*)
+router.use(
+  '/api/v1/admin',
+  authenticateUser,
+  createRateLimiter({ windowInSeconds: 60, maxRequests: 30, type: 'USER' }),
+  createProxy(config.services.adminServiceUrl)
+);
+
 module.exports = router;
 
 

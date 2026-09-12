@@ -17,10 +17,15 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use(reqLogger);
 
+const adminRoutes = require('./routes');
+
 // Health Check Route
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'UP', message: 'Admin service is running optimally' });
 });
+
+// Admin API Routes
+app.use('/api/v1/admin', adminRoutes);
 
 // Centralized Error Handler
 app.use(errorHandler);
