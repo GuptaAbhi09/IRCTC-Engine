@@ -108,6 +108,42 @@ services:
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
       KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
 
+  # -------------------------------------------------------------
+  # 7. ElasticSearch Search Engine Service
+  # -------------------------------------------------------------
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    container_name: irctc-elasticsearch
+    restart: always
+    environment:
+      - node.name=elasticsearch
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ports:
+      - "9200:9200"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:9200/_cat/health | grep -q green || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+
+  # -------------------------------------------------------------
+  # 8. Kibana (ElasticSearch Web Management Dashboard)
+  # -------------------------------------------------------------
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.11.0
+    container_name: irctc-kibana
+    restart: always
+    ports:
+      - "5601:5601"
+    depends_on:
+      - elasticsearch
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+
 # -------------------------------------------------------------
 # Persistent Volumes
 # -------------------------------------------------------------
@@ -115,3 +151,4 @@ volumes:
   postgres_data:
   redis_data:
   pgadmin_data:
+  elasticsearch_data:
