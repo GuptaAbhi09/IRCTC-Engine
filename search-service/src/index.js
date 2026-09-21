@@ -6,6 +6,8 @@ const logger = require('./config/logger');
 const corsMiddleware = require('./middlewares/cors.middleware');
 const { connectElasticSearch } = require('./config/elasticsearch');
 const { initializeIndicesAndMappings } = require('./indexers/mapping.indexer');
+const { connectConsumer } = require('./config/kafka');
+const { startAdminEventsConsumer } = require('./consumers/adminEvents.consumer');
 
 const app = express();
 
@@ -21,13 +23,15 @@ app.get('/health', (req, res) => {
   res.status(200).json({ status: 'UP', message: 'Search service is running optimally' });
 });
 
-// Start Search Service Server & Connect ElasticSearch
+// Start Search Service Server, Connect ElasticSearch & Kafka Consumer
 app.listen(config.port, async () => {
   logger.info(`[SEARCH-SERVICE] Running on port ${config.port} in ${config.env} mode`);
   try {
     await connectElasticSearch();
     await initializeIndicesAndMappings();
+    await connectConsumer();
+    await startAdminEventsConsumer();
   } catch (err) {
-    logger.error(`[SEARCH-SERVICE] ElasticSearch initialization warning: ${err.message}`);
+    logger.error(`[SEARCH-SERVICE] Initialization warning: ${err.message}`);
   }
 });
