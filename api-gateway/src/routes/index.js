@@ -40,6 +40,13 @@ router.use(
   createProxy(config.services.adminServiceUrl)
 );
 
+// 5. Search Service - Public Search Routes Proxy (/api/v1/search/*)
+router.use(
+  '/api/v1/search',
+  createRateLimiter({ windowInSeconds: 60, maxRequests: 60, type: 'IP' }),
+  createProxy(config.services.searchServiceUrl)
+);
+
 module.exports = router;
 
 

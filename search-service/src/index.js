@@ -18,10 +18,15 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
+const searchRoutes = require('./routes');
+
 // Health Check Route
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'UP', message: 'Search service is running optimally' });
 });
+
+// Search API Routes
+app.use('/api/v1/search', searchRoutes);
 
 // Start Search Service Server, Connect ElasticSearch & Kafka Consumer
 app.listen(config.port, async () => {

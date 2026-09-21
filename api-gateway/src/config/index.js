@@ -10,6 +10,7 @@ module.exports = {
     userServiceUrl: process.env.USER_SERVICE_URL || 'http://localhost:3001',
     bookingServiceUrl: process.env.BOOKING_SERVICE_URL || 'http://localhost:3002',
     adminServiceUrl: process.env.ADMIN_SERVICE_URL || 'http://localhost:3003',
+    searchServiceUrl: process.env.SEARCH_SERVICE_URL || 'http://localhost:3004',
   },
   redisUrl: process.env.REDIS_URL || 'redis://localhost:6379',
   jwt: {
