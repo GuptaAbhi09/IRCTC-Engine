@@ -1,0 +1,48 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// -------------------------------------------------------------
+// 1. SeatStatus Enum
+// -------------------------------------------------------------
+enum SeatStatus {
+  AVAILABLE
+  LOCKED
+  BOOKED
+}
+
+// -------------------------------------------------------------
+// 2. SeatInventory Model (Segment-Based Seat Availability)
+// -------------------------------------------------------------
+model SeatInventory {
+  id               String     @id @default(uuid())
+  scheduleId       String
+  trainId          String
+  seatId           String
+  seatNumber       String     // e.g. "B1-12"
+  seatType         String     // LOWER, MIDDLE, UPPER, SIDE_LOWER, SIDE_UPPER
+  
+  // Segment Route Boundaries
+  fromStationId    String
+  toStationId      String
+  fromSequenceNum  Int        // e.g. 1
+  toSequenceNum    Int        // e.g. 2
+  
+  status           SeatStatus @default(AVAILABLE)
+  bookingId        String?    // Nullable (attached when booked)
+  price            Float
+  
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+
+  // Composite Constraints & Performance Indexes
+  @@unique([scheduleId, seatId, fromSequenceNum, toSequenceNum])
+  @@index([scheduleId, fromSequenceNum, toSequenceNum, status])
+  @@index([trainId, scheduleId])
+  @@map("seat_inventories")
+}
