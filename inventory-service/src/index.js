@@ -25,7 +25,18 @@ app.get('/health', (req, res) => {
 // Centralized Error Handler
 app.use(errorHandler);
 
-// Start Inventory Service Server
-app.listen(config.port, () => {
+const { connectKafka } = require('./config/kafka');
+const { startScheduleConsumer } = require('./consumers/scheduleEvents.consumer');
+
+// Start Inventory Service Server & Kafka Consumer
+app.listen(config.port, async () => {
   logger.info(`[INVENTORY-SERVICE] Server running on port ${config.port} in ${config.env} mode`);
+  try {
+    await connectKafka();
+    await startScheduleConsumer();
+    logger.info('🚀 Schedule Events Kafka Consumer active and listening');
+  } catch (err) {
+    logger.error('Failed to initialize Kafka consumer:', err);
+  }
 });
+
