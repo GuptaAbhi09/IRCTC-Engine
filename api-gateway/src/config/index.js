@@ -11,6 +11,7 @@ module.exports = {
     bookingServiceUrl: process.env.BOOKING_SERVICE_URL || 'http://localhost:3002',
     adminServiceUrl: process.env.ADMIN_SERVICE_URL || 'http://localhost:3003',
     searchServiceUrl: process.env.SEARCH_SERVICE_URL || 'http://localhost:3004',
+    inventoryServiceUrl: process.env.INVENTORY_SERVICE_URL || 'http://localhost:3005',
   },
   redisUrl: process.env.REDIS_URL || 'redis://localhost:6379',
   jwt: {

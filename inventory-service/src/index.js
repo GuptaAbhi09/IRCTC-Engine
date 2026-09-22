@@ -22,8 +22,13 @@ app.get('/health', (req, res) => {
   res.status(200).json({ status: 'UP', message: 'Inventory service is running optimally' });
 });
 
+// API Routes
+const inventoryRoutes = require('./routes/inventory.routes');
+app.use('/api/v1/inventory', inventoryRoutes);
+
 // Centralized Error Handler
 app.use(errorHandler);
+
 
 const { connectKafka } = require('./config/kafka');
 const { startScheduleConsumer } = require('./consumers/scheduleEvents.consumer');

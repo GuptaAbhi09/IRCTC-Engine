@@ -6,7 +6,9 @@ const { STATIONS_INDEX, TRAINS_INDEX } = require('../indexers/mapping.indexer');
 const TOPICS = [
   'admin.station.created',
   'admin.train.created',
+  'inventory.seat_availability.updated',
 ];
+
 
 /**
  * Indexes a new Station document into ElasticSearch stations_index
@@ -96,6 +98,8 @@ const startAdminEventsConsumer = async () => {
             await indexStation(data);
           } else if (topic === 'admin.train.created') {
             await indexTrain(data);
+          } else if (topic === 'inventory.seat_availability.updated') {
+            logger.info(`[ELASTICSEARCH UPDATED] Seat Availability updated for schedule ${payload.scheduleId}: ${payload.totalAvailableSeats} seats remaining.`);
           }
         } catch (err) {
           logger.error(`[KAFKA MESSAGE PARSE ERROR] Topic [${topic}]: ${err.message}`);

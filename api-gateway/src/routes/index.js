@@ -47,6 +47,14 @@ router.use(
   createProxy(config.services.searchServiceUrl)
 );
 
+// 6. Inventory Service - Public Availability Query Proxy (/api/v1/inventory/*)
+router.use(
+  '/api/v1/inventory',
+  createRateLimiter({ windowInSeconds: 60, maxRequests: 60, type: 'IP' }),
+  createProxy(config.services.inventoryServiceUrl)
+);
+
 module.exports = router;
+
 
 
