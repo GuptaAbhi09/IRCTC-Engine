@@ -1,0 +1,63 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum BookingStatus {
+  PENDING
+  SEATS_HELD
+  PAYMENT_PENDING
+  CONFIRMING
+  CONFIRMED
+  FAILED
+  EXPIRED
+  CANCELLED
+}
+
+model Booking {
+  id              String           @id @default(uuid())
+  pnr             String           @unique
+  userId          Int
+  scheduleId      Int
+  fromStationId   Int
+  toStationId     Int
+  totalAmount     Float
+  status          BookingStatus    @default(PENDING)
+  idempotencyKey  String           @unique
+
+  razorpayOrderId String?          @unique
+  paymentId       String?
+
+  expiresAt       DateTime
+
+  passengers      BookingPassenger[]
+
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  @@index([userId])
+  @@index([pnr])
+  @@index([status, expiresAt])
+  @@map("bookings")
+}
+
+model BookingPassenger {
+  id              String   @id @default(uuid())
+  bookingId       String
+  booking         Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  name            String
+  age             Int
+  gender          String
+  seatId          Int
+  seatNumber      String
+  berthType       String
+
+  createdAt       DateTime @default(now())
+
+  @@map("booking_passengers")
+}

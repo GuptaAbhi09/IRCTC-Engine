@@ -54,7 +54,16 @@ router.use(
   createProxy(config.services.inventoryServiceUrl)
 );
 
+// 7. Booking Service - Private Booking Routes Proxy (/api/v1/bookings/*)
+router.use(
+  '/api/v1/bookings',
+  authenticateUser,
+  createRateLimiter({ windowInSeconds: 60, maxRequests: 20, type: 'USER' }),
+  createProxy(config.services.bookingServiceUrl)
+);
+
 module.exports = router;
+
 
 
 
