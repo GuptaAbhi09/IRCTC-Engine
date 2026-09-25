@@ -3,6 +3,7 @@ const config = require('./config');
 const logger = require('./config/logger');
 const { connectConsumer, disconnectConsumer } = require('./config/kafka');
 const { startEmailConsumer } = require('./consumers/email.consumer');
+const { startTicketEventsConsumer } = require('./consumers/ticketEvents.consumer');
 
 const app = express();
 
@@ -13,16 +14,18 @@ app.get('/health', (req, res) => {
   res.status(200).json({ status: 'UP', message: 'Notification service is running optimally' });
 });
 
-// Start Server and initialize Kafka Consumer
+// Start Server and initialize Kafka Consumers
 app.listen(config.port, async () => {
   logger.info(`Notification service running on port ${config.port}`);
   try {
     await connectConsumer();
     await startEmailConsumer();
+    await startTicketEventsConsumer();
   } catch (err) {
     logger.error(`Failed to initialize notification service consumer: ${err.message}`);
   }
 });
+
 
 // Graceful Shutdown Handlers
 const gracefulShutdown = async () => {
