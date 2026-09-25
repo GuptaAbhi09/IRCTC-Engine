@@ -62,7 +62,15 @@ router.use(
   createProxy(config.services.bookingServiceUrl)
 );
 
+// 8. Payment Service - Private/Public Payment Routes Proxy (/api/v1/payments/*)
+router.use(
+  '/api/v1/payments',
+  createRateLimiter({ windowInSeconds: 60, maxRequests: 30, type: 'IP' }),
+  createProxy(config.services.paymentServiceUrl)
+);
+
 module.exports = router;
+
 
 
 

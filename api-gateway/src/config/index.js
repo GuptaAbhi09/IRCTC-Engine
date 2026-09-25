@@ -8,10 +8,11 @@ module.exports = {
   env: process.env.NODE_ENV || 'development',
   services: {
     userServiceUrl: process.env.USER_SERVICE_URL || 'http://localhost:3001',
-    bookingServiceUrl: process.env.BOOKING_SERVICE_URL || 'http://localhost:3002',
+    bookingServiceUrl: process.env.BOOKING_SERVICE_URL || 'http://localhost:3006',
     adminServiceUrl: process.env.ADMIN_SERVICE_URL || 'http://localhost:3003',
     searchServiceUrl: process.env.SEARCH_SERVICE_URL || 'http://localhost:3004',
     inventoryServiceUrl: process.env.INVENTORY_SERVICE_URL || 'http://localhost:3005',
+    paymentServiceUrl: process.env.PAYMENT_SERVICE_URL || 'http://localhost:3007',
   },
   redisUrl: process.env.REDIS_URL || 'redis://localhost:6379',
   jwt: {

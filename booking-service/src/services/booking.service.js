@@ -88,4 +88,60 @@ const reserveSeats = async (userId, payload, idempotencyKey) => {
   }
 };
 
-module.exports = { reserveSeats };
+/**
+ * Call payment-service to create Razorpay Order & CAS update state to PAYMENT_PENDING (SAGA Step 2)
+ */
+const createPaymentOrderForBooking = async (bookingId) => {
+  const booking = await prisma.booking.findUnique({
+    where: { id: bookingId }
+  });
+
+  if (!booking) {
+    const err = new Error('Booking not found');
+    err.statusCode = 444;
+    throw err;
+  }
+
+  if (booking.expiresAt < new Date()) {
+    const err = new Error('Reservation timer expired for this booking. Please search and reserve again.');
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const paymentServiceUrl = require('../config').services.paymentServiceUrl;
+
+  const response = await fetch(`${paymentServiceUrl}/api/v1/payments/create-order`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ bookingId: booking.id, amount: booking.totalAmount, pnr: booking.pnr })
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to create payment order in Payment Service');
+  }
+
+  const { data } = await response.json();
+
+  // CAS Update: SEATS_HELD -> PAYMENT_PENDING
+  const updatedBooking = await prisma.booking.update({
+    where: { id: booking.id },
+    data: {
+      status: 'PAYMENT_PENDING',
+      razorpayOrderId: data.orderId
+    }
+  });
+
+  logger.info(`[SAGA STEP 2 SUCCESS] Booking ${booking.id} status updated to PAYMENT_PENDING with Razorpay Order ${data.orderId}`);
+
+  return {
+    bookingId: booking.id,
+    pnr: booking.pnr,
+    razorpayOrderId: data.orderId,
+    amount: data.amount,
+    currency: data.currency,
+    expiresAt: booking.expiresAt
+  };
+};
+
+module.exports = { reserveSeats, createPaymentOrderForBooking };
+

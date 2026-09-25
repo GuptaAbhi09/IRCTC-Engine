@@ -18,4 +18,15 @@ const reserve = async (req, res, next) => {
   }
 };
 
-module.exports = { reserve };
+const createPaymentOrder = async (req, res, next) => {
+  try {
+    const { bookingId } = req.params;
+    const paymentOrderData = await bookingService.createPaymentOrderForBooking(bookingId);
+    res.status(200).json({ success: true, data: paymentOrderData });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { reserve, createPaymentOrder };
+
