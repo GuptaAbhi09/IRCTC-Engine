@@ -19,6 +19,8 @@ const createPaymentOrder = async (bookingId, amount, pnr) => {
   };
 };
 
+const { acquirePaymentDeduplicationLock } = require('../utils/deduplication');
+
 /**
  * Handles Payment Verification / Webhook & publishes PAYMENT_SUCCESS to Kafka
  */
@@ -28,6 +30,13 @@ const processPaymentSuccess = async (bookingId, razorpayOrderId, razorpayPayment
     const err = new Error('Invalid Razorpay signature verification');
     err.statusCode = 400;
     throw err;
+  }
+
+  // Atomic Redis Deduplication Check (First to arrive wins!)
+  const isFirstNotification = await acquirePaymentDeduplicationLock(razorpayPaymentId);
+  if (!isFirstNotification) {
+    logger.info(`[DUPLICATE NOTIFICATION SKIPPED] Payment ${razorpayPaymentId} already processed via parallel path.`);
+    return { bookingId, razorpayPaymentId, status: 'SKIPPED_DUPLICATE' };
   }
 
   const payload = {
@@ -51,5 +60,6 @@ const processPaymentSuccess = async (bookingId, razorpayOrderId, razorpayPayment
 
   return payload;
 };
+
 
 module.exports = { createPaymentOrder, processPaymentSuccess };

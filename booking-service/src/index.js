@@ -30,7 +30,17 @@ app.use('/api/v1/bookings', bookingRoutes);
 app.use(errorHandler);
 
 
-// Start Server
-app.listen(config.port, () => {
+const { connectKafka } = require('./config/kafka');
+const { startPaymentEventsConsumer } = require('./consumers/paymentEvents.consumer');
+
+// Start Server & Kafka Consumer
+app.listen(config.port, async () => {
   logger.info(`[BOOKING-SERVICE] Running on port ${config.port} in ${config.env} mode`);
+  try {
+    await connectKafka();
+    await startPaymentEventsConsumer();
+  } catch (err) {
+    logger.error('Failed starting Kafka consumer:', err);
+  }
 });
+
