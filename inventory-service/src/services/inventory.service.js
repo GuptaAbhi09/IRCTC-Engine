@@ -130,5 +130,25 @@ const unlockSeats = async (scheduleId, seatIds, fromSequenceNum, toSequenceNum) 
   return result.count;
 };
 
-module.exports = { getSeatAvailability, holdSeats, unlockSeats };
+/**
+ * Confirm seat segment hops for booking (LOCKED -> BOOKED)
+ */
+const confirmSeats = async (scheduleId, seatIds, fromSequenceNum, toSequenceNum, bookingId) => {
+  const result = await prisma.seatInventory.updateMany({
+    where: {
+      scheduleId: parseInt(scheduleId),
+      seatId: { in: seatIds.map(id => parseInt(id)) },
+      fromSequenceNum: { gte: parseInt(fromSequenceNum) },
+      toSequenceNum: { lte: parseInt(toSequenceNum) },
+      status: 'LOCKED'
+    },
+    data: {
+      status: 'BOOKED',
+      bookingId: bookingId ? String(bookingId) : null
+    }
+  });
 
+  return result.count;
+};
+
+module.exports = { getSeatAvailability, holdSeats, unlockSeats, confirmSeats };

@@ -133,7 +133,7 @@ const createPaymentOrderForBooking = async (bookingId) => {
 
   logger.info(`[SAGA STEP 2 SUCCESS] Booking ${booking.id} status updated to PAYMENT_PENDING with Razorpay Order ${data.orderId}`);
 
-  return {
+    return {
     bookingId: booking.id,
     pnr: booking.pnr,
     razorpayOrderId: data.orderId,
@@ -143,5 +143,54 @@ const createPaymentOrderForBooking = async (bookingId) => {
   };
 };
 
-module.exports = { reserveSeats, createPaymentOrderForBooking };
+/**
+ * Confirm booking, update inventory to BOOKED, release Redis locks, and publish Kafka confirmation (SAGA Step 3)
+ */
+const confirmBooking = async (bookingId) => {
+  const booking = await prisma.booking.findUnique({
+    where: { id: bookingId },
+    include: { passengers: true }
+  });
+
+  if (!booking) {
+    logger.warn(`[CONFIRM BOOKING ERROR] Booking ${bookingId} not found`);
+    return;
+  }
+
+  const { confirmInventorySeats } = require('./inventoryClient');
+  const { producer } = require('../config/kafka');
+  const seatIds = booking.passengers.map(p => p.seatId);
+
+  // 1. Confirm seats in Inventory Service (LOCKED -> BOOKED)
+  await confirmInventorySeats(booking.scheduleId, seatIds, booking.fromStationId, booking.toStationId, booking.id);
+
+  // 2. CAS Update Booking status to CONFIRMED
+  const confirmedBooking = await prisma.booking.update({
+    where: { id: bookingId },
+    data: { status: 'CONFIRMED' },
+    include: { passengers: true }
+  });
+
+  // 3. Force release Redis Distributed Locks
+  const lockKeys = generateLockKeys(booking.scheduleId, seatIds, booking.fromStationId, booking.toStationId);
+  await releaseSeatLocks(lockKeys, booking.idempotencyKey);
+
+  logger.info(`[SAGA STEP 3 COMPLETE] 🎉 Booking ${booking.id} (PNR: ${booking.pnr}) is officially CONFIRMED!`);
+
+  // 4. Publish booking.ticket.confirmed to Kafka for Notification Service
+  try {
+    await producer.send({
+      topic: 'booking.ticket.confirmed',
+      messages: [{ value: JSON.stringify(confirmedBooking) }]
+    });
+    logger.info(`[KAFKA BROADCAST] Published booking.ticket.confirmed for PNR ${booking.pnr}`);
+  } catch (err) {
+    logger.error(`[KAFKA ERROR] Failed to publish confirmation event: ${err.message}`);
+  }
+
+  return confirmedBooking;
+};
+
+module.exports = { reserveSeats, createPaymentOrderForBooking, confirmBooking };
+
 

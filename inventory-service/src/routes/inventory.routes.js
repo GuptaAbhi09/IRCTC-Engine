@@ -8,6 +8,8 @@ router.get('/availability', inventoryController.getAvailability);
 // Internal SAGA Routes
 router.post('/hold-seats', inventoryController.holdSeats);
 router.post('/unlock-seats', inventoryController.unlockSeats);
+router.post('/confirm-seats', inventoryController.confirmSeats);
 
 module.exports = router;
+
 

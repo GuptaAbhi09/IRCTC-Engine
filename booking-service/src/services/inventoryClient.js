@@ -45,4 +45,23 @@ const unlockInventorySeats = async (scheduleId, seatIds, fromSequenceNum, toSequ
   }
 };
 
-module.exports = { holdInventorySeats, unlockInventorySeats };
+/**
+ * Call Inventory Service to confirm seat segments (Status LOCKED -> BOOKED)
+ */
+const confirmInventorySeats = async (scheduleId, seatIds, fromSequenceNum, toSequenceNum, bookingId) => {
+  try {
+    const response = await fetch(`${inventoryBaseUrl}/api/v1/inventory/confirm-seats`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ scheduleId, seatIds, fromSequenceNum, toSequenceNum, bookingId })
+    });
+
+    const data = await response.json();
+    return data.count > 0;
+  } catch (error) {
+    logger.error(`[INVENTORY CLIENT ERROR] confirmSeats failed: ${error.message}`);
+    return false;
+  }
+};
+
+module.exports = { holdInventorySeats, unlockInventorySeats, confirmInventorySeats };

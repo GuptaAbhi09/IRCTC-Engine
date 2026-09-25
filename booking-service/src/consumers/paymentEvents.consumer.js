@@ -33,6 +33,9 @@ const startPaymentEventsConsumer = async () => {
 
           if (result.count > 0) {
             logger.info(`✅ CAS State Transition: Booking ${bookingId} status updated to CONFIRMING`);
+            // Execute SAGA Step 3 Confirmation Engine
+            const { confirmBooking } = require('../services/booking.service');
+            await confirmBooking(bookingId);
           } else {
             logger.warn(`⚠️ CAS State Skipped: Booking ${bookingId} is already in state CONFIRMING/CONFIRMED or cancelled.`);
           }
@@ -41,6 +44,7 @@ const startPaymentEventsConsumer = async () => {
         }
       }
     });
+
   } catch (error) {
     logger.error(`❌ Kafka Consumer start error: ${error.message}`);
   }
