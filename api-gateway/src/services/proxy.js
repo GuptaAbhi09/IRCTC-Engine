@@ -50,10 +50,10 @@ const getCircuitBreaker = (targetUrl) => {
 
   // Circuit Breaker Options
   const breakerOptions = {
-    timeout: 5000, // 5 seconds request timeout
-    errorThresholdPercentage: 50, // Trip if 50% of requests fail
-    resetTimeout: 60000, // Stay OPEN for 60s before HALF-OPEN probe
-    capacity: 5, // Require at least 5 requests before calculating failure rate
+    timeout: 10000, // 10 seconds request timeout
+    errorThresholdPercentage: 80, // Trip if 80% of requests fail
+    resetTimeout: 5000, // Stay OPEN for 5s before HALF-OPEN probe
+    capacity: 20, // Require at least 20 requests before calculating failure rate
   };
 
   const breaker = new CircuitBreaker(sendRequest, breakerOptions);

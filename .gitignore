@@ -2,3 +2,4 @@
 user-service/.env
 node_modules/
 user-service/node_modules/
+api_documentation.md

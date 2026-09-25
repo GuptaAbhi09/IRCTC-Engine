@@ -19,8 +19,9 @@ const holdInventorySeats = async (scheduleId, seatIds, fromSequenceNum, toSequen
     }
 
     const data = await response.json();
-    return data.count > 0;
+    return data.success === true;
   } catch (error) {
+
     logger.error(`[INVENTORY CLIENT ERROR] holdSeats failed: ${error.message}`);
     return false;
   }

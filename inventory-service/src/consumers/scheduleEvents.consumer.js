@@ -1,5 +1,7 @@
 const { consumer } = require('../config/kafka');
-const prisma = require('../config/db');
+const prisma = require('../config/prisma');
+
+
 
 /**
  * Consumer for admin.schedule.created event.
