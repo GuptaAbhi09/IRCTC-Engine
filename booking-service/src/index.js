@@ -32,15 +32,18 @@ app.use(errorHandler);
 
 const { connectKafka } = require('./config/kafka');
 const { startPaymentEventsConsumer } = require('./consumers/paymentEvents.consumer');
+const { startExpiryWorker } = require('./workers/expiryWorker');
 
-// Start Server & Kafka Consumer
+// Start Server, Kafka Consumer & Expiry Worker
 app.listen(config.port, async () => {
   logger.info(`[BOOKING-SERVICE] Running on port ${config.port} in ${config.env} mode`);
   try {
     await connectKafka();
     await startPaymentEventsConsumer();
+    startExpiryWorker();
   } catch (err) {
-    logger.error('Failed starting Kafka consumer:', err);
+    logger.error('Failed starting Kafka consumer or background worker:', err);
   }
 });
+
 

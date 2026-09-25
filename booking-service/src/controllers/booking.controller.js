@@ -28,5 +28,17 @@ const createPaymentOrder = async (req, res, next) => {
   }
 };
 
-module.exports = { reserve, createPaymentOrder };
+const cancel = async (req, res, next) => {
+  try {
+    const { bookingId } = req.params;
+    const { reason } = req.body;
+    const result = await bookingService.cancelBooking(bookingId, reason);
+    res.status(200).json({ success: true, message: 'Booking cancelled successfully', data: result });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { reserve, createPaymentOrder, cancel };
+
 

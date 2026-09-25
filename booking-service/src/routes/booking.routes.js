@@ -9,5 +9,9 @@ router.post('/reserve', idempotencyMiddleware, bookingController.reserve);
 // POST /api/v1/bookings/:bookingId/create-payment-order
 router.post('/:bookingId/create-payment-order', bookingController.createPaymentOrder);
 
+// POST /api/v1/bookings/:bookingId/cancel
+router.post('/:bookingId/cancel', bookingController.cancel);
+
 module.exports = router;
+
 

@@ -191,6 +191,47 @@ const confirmBooking = async (bookingId) => {
   return confirmedBooking;
 };
 
-module.exports = { reserveSeats, createPaymentOrderForBooking, confirmBooking };
+/**
+ * Explicit user or SAGA rollback cancellation (Compensating Transaction)
+ */
+const cancelBooking = async (bookingId, reason = 'User requested cancellation') => {
+  const booking = await prisma.booking.findUnique({
+    where: { id: bookingId },
+    include: { passengers: true }
+  });
+
+  if (!booking) {
+    const err = new Error('Booking not found');
+    err.statusCode = 404;
+    throw err;
+  }
+
+  // CAS Update status to CANCELLED
+  const updated = await prisma.booking.updateMany({
+    where: {
+      id: bookingId,
+      status: { in: ['SEATS_HELD', 'PAYMENT_PENDING'] }
+    },
+    data: { status: 'CANCELLED' }
+  });
+
+  if (updated.count > 0) {
+    const seatIds = booking.passengers.map(p => p.seatId);
+
+    // 1. Compensating Transaction: Unlock Inventory Hops
+    await unlockInventorySeats(booking.scheduleId, seatIds, booking.fromStationId, booking.toStationId);
+
+    // 2. Compensating Transaction: Release Redis Locks
+    const lockKeys = generateLockKeys(booking.scheduleId, seatIds, booking.fromStationId, booking.toStationId);
+    await releaseSeatLocks(lockKeys, booking.idempotencyKey);
+
+    logger.info(`[CANCEL BOOKING] Booking ${booking.id} (PNR: ${booking.pnr}) cancelled. Reason: ${reason}`);
+  }
+
+  return { success: true, bookingId, status: 'CANCELLED' };
+};
+
+module.exports = { reserveSeats, createPaymentOrderForBooking, confirmBooking, cancelBooking };
+
 
 
