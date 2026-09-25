@@ -26,4 +26,25 @@ const getAvailability = async (req, res, next) => {
   }
 };
 
-module.exports = { getAvailability };
+const holdSeats = async (req, res, next) => {
+  try {
+    const { scheduleId, seatIds, fromSequenceNum, toSequenceNum, bookingId } = req.body;
+    const count = await inventoryService.holdSeats(scheduleId, seatIds, fromSequenceNum, toSequenceNum, bookingId);
+    res.status(200).json({ success: true, count });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const unlockSeats = async (req, res, next) => {
+  try {
+    const { scheduleId, seatIds, fromSequenceNum, toSequenceNum } = req.body;
+    const count = await inventoryService.unlockSeats(scheduleId, seatIds, fromSequenceNum, toSequenceNum);
+    res.status(200).json({ success: true, count });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { getAvailability, holdSeats, unlockSeats };
+

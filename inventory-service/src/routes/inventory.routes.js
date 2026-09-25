@@ -5,4 +5,9 @@ const inventoryController = require('../controllers/inventory.controller');
 // GET /api/v1/inventory/availability?scheduleId=1&fromStationId=101&toStationId=103
 router.get('/availability', inventoryController.getAvailability);
 
+// Internal SAGA Routes
+router.post('/hold-seats', inventoryController.holdSeats);
+router.post('/unlock-seats', inventoryController.unlockSeats);
+
 module.exports = router;
+

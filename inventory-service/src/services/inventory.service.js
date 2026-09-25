@@ -90,4 +90,45 @@ const getSeatAvailability = async (scheduleId, fromStationId, toStationId) => {
   return responseData;
 };
 
-module.exports = { getSeatAvailability };
+/**
+ * Hold seat segment hops for reservation (AVAILABLE -> LOCKED)
+ */
+const holdSeats = async (scheduleId, seatIds, fromSequenceNum, toSequenceNum, bookingId) => {
+  const result = await prisma.seatInventory.updateMany({
+    where: {
+      scheduleId: parseInt(scheduleId),
+      seatId: { in: seatIds.map(id => parseInt(id)) },
+      fromSequenceNum: { gte: parseInt(fromSequenceNum) },
+      toSequenceNum: { lte: parseInt(toSequenceNum) },
+      status: 'AVAILABLE'
+    },
+    data: {
+      status: 'LOCKED'
+    }
+  });
+
+  return result.count;
+};
+
+/**
+ * Release/Unlock seat segment hops (LOCKED -> AVAILABLE)
+ */
+const unlockSeats = async (scheduleId, seatIds, fromSequenceNum, toSequenceNum) => {
+  const result = await prisma.seatInventory.updateMany({
+    where: {
+      scheduleId: parseInt(scheduleId),
+      seatId: { in: seatIds.map(id => parseInt(id)) },
+      fromSequenceNum: { gte: parseInt(fromSequenceNum) },
+      toSequenceNum: { lte: parseInt(toSequenceNum) },
+      status: 'LOCKED'
+    },
+    data: {
+      status: 'AVAILABLE'
+    }
+  });
+
+  return result.count;
+};
+
+module.exports = { getSeatAvailability, holdSeats, unlockSeats };
+

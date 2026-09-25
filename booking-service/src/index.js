@@ -22,8 +22,13 @@ app.get('/health', (req, res) => {
   res.status(200).json({ status: 'UP', service: 'booking-service', message: 'Booking service is operational' });
 });
 
+// API Routes
+const bookingRoutes = require('./routes/booking.routes');
+app.use('/api/v1/bookings', bookingRoutes);
+
 // Centralized Error Handler
 app.use(errorHandler);
+
 
 // Start Server
 app.listen(config.port, () => {
