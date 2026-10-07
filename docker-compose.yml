@@ -7,7 +7,7 @@ services:
   postgres:
     image: postgres:16-alpine
     container_name: irctc-postgres
-    restart: always
+    restart: "no"
     environment:
       POSTGRES_USER: admin
       POSTGRES_PASSWORD: irctcpass
@@ -28,7 +28,7 @@ services:
   redis:
     image: redis:7-alpine
     container_name: irctc-redis
-    restart: always
+    restart: "no"
     ports:
       - "6379:6379"
     volumes:
@@ -45,7 +45,7 @@ services:
   pgadmin:
     image: dpage/pgadmin4:latest
     container_name: irctc-pgadmin
-    restart: always
+    restart: "no"
     environment:
       PGADMIN_DEFAULT_EMAIL: admin@irctc.com
       PGADMIN_DEFAULT_PASSWORD: adminpassword
@@ -62,7 +62,7 @@ services:
   zookeeper:
     image: confluentinc/cp-zookeeper:7.5.0
     container_name: irctc-zookeeper
-    restart: always
+    restart: "no"
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
@@ -75,7 +75,7 @@ services:
   kafka:
     image: confluentinc/cp-kafka:7.5.0
     container_name: irctc-kafka
-    restart: always
+    restart: "no"
     depends_on:
       - zookeeper
     ports:
@@ -98,7 +98,7 @@ services:
   kafka-ui:
     image: provectuslabs/kafka-ui:latest
     container_name: irctc-kafka-ui
-    restart: always
+    restart: "no"
     ports:
       - "8080:8080"
     depends_on:
@@ -114,7 +114,7 @@ services:
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
     container_name: irctc-elasticsearch
-    restart: always
+    restart: "no"
     environment:
       - node.name=elasticsearch
       - discovery.type=single-node
@@ -136,7 +136,7 @@ services:
   kibana:
     image: docker.elastic.co/kibana/kibana:8.11.0
     container_name: irctc-kibana
-    restart: always
+    restart: "no"
     ports:
       - "5601:5601"
     depends_on:
